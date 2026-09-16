@@ -1,227 +1,133 @@
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
+local p = game:GetService("Players").LocalPlayer
+local rs = game:GetService("RunService")
+local uis = game:GetService("UserInputService")
 
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local on, hide, start = false, false, os.time()
 
--- Configuration & State
-local KaitunEnabled = false
-local ScreenHidden = false
-local StartTime = os.time()
+-- UI Setup
+local gui = Instance.new("ScreenGui", game:GetService("CoreGui") or p.PlayerGui)
+gui.Name, gui.IgnoreGuiInset, gui.ResetOnSpawn = "GekyumeHubKaitun", true, false
 
--- 1. Create Main Overlay ScreenGui
-local OverlayGui = Instance.new("ScreenGui")
-OverlayGui.Name = "GekyumeHubKaitun"
-OverlayGui.ResetOnSpawn = false
-OverlayGui.IgnoreGuiInset = true
+local bg = Instance.new("Frame", gui)
+bg.Size, bg.BackgroundColor3, bg.BorderSizePixel, bg.Visible = UDim2.new(1,0,1,0), Color3.new(0,0,0), 0, false
 
--- Try parent to CoreGui for exploit stability, fallback to PlayerGui
-local success, _ = pcall(function() OverlayGui.Parent = CoreGui end)
-if not success then OverlayGui.Parent = PlayerGui end
+local txtBox = Instance.new("Frame", bg)
+txtBox.Size, txtBox.Position, txtBox.BackgroundTransparency = UDim2.new(0,400,0,350), UDim2.new(0.5,-200,0.5,-175), 1
+Instance.new("UIListLayout", txtBox).HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- Black Background Frame for Kaitun Mode
-local Background = Instance.new("Frame")
-Background.Size = UDim2.new(1, 0, 1, 0)
-Background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Background.BorderSizePixel = 0
-Background.Visible = false -- Starts hidden because Kaitun is off by default
-Background.Parent = OverlayGui
-
--- Container for Text Labels on the black screen
-local TextContainer = Instance.new("Frame")
-TextContainer.Size = UDim2.new(0, 400, 0, 350)
-TextContainer.Position = UDim2.new(0.5, -200, 0.5, -175)
-TextContainer.BackgroundTransparency = 1
-TextContainer.Parent = Background
-
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-UIListLayout.Padding = UDim.new(0, 4)
-UIListLayout.Parent = TextContainer
-
--- Helper function to create styled labels
-local function CreateLabel(text, color, size, isBold)
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, size or 20)
-    label.BackgroundTransparency = 1
-    label.Font = isBold and Enum.Font.SourceSansBold or Enum.Font.SourceSansSemibold
-    label.TextSize = size and (size - 4) or 16
-    label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
-    label.Text = text
-    label.Parent = TextContainer
-    return label
+local function lbl(t, c, s, b)
+    local l = Instance.new("TextLabel", txtBox)
+    l.Size, l.BackgroundTransparency, l.Text, l.TextColor3 = UDim2.new(1,0,0,s or 20), 1, t, c or Color3.new(1,1,1)
+    l.TextSize, l.Font = (s or 20)-4, b and Enum.Font.SourceSansBold or Enum.Font.SourceSansSemibold
+    return l
 end
 
--- Create Labels matching the layout
-local TitleLabel = CreateLabel("ANIME DICE KAITUN", Color3.fromRGB(200, 150, 255), 26, true)
-local HubLabel = CreateLabel("GekyumeHub", Color3.fromRGB(255, 255, 255), 18, true)
-local UserLabel = CreateLabel("@" .. LocalPlayer.Name .. " • Version 524", Color3.fromRGB(180, 180, 180), 14, false)
-local StatusLabel = CreateLabel("● KAITUN RUNNING", Color3.fromRGB(0, 255, 120), 18, true)
+-- Draw HUD
+lbl("ANIME DICE KAITUN", Color3.fromRGB(200,150,255), 26, true)
+lbl("GekyumeHub", Color3.new(1,1,1), 18, true)
+lbl("@"..p.Name, Color3.fromRGB(180,180,180), 14, false)
+lbl("● KAITUN RUNNING", Color3.fromRGB(0,255,120), 18, true)
+lbl("", Color3.new(), 6)
+local l_mon = lbl("MONEY $0  SLOTS 0", Color3.fromRGB(0,255,120), 20, true)
+local l_gem = lbl("TRAIT ITEMS 0  GEMS 0", Color3.fromRGB(255,120,200), 20, true)
+lbl("", Color3.new(), 6)
+local l_dic = lbl("BEST DICE None • Luck 1", Color3.fromRGB(0,220,255), 18, true)
+local l_unit = lbl("HIGHEST INCOME UNIT: None", Color3.fromRGB(180,130,255), 18, true)
+local l_tow = lbl("TOWER None • Run 0 • Floor 0", Color3.fromRGB(200,150,255), 18, true)
+lbl("", Color3.new(), 6)
+local l_ses = lbl("SESSION 00:00:00", Color3.fromRGB(255,200,50), 18, true)
 
-CreateLabel("", Color3.fromRGB(0,0,0), 6) -- Spacer
+-- Floating Toggle Button
+local btn = Instance.new("TextButton", gui)
+btn.Size, btn.Position = UDim2.new(0,150,0,40), UDim2.new(0.5,-75,0,20)
+btn.BackgroundColor3, btn.Text, btn.TextColor3 = Color3.fromRGB(180,50,50), "KAITUN • OFF", Color3.new(1,1,1)
+btn.Font, btn.TextSize = Enum.Font.GothamBold, 16
+Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
 
-local MoneyLabel = CreateLabel("MONEY $0  SLOTS 0", Color3.fromRGB(0, 255, 120), 20, true)
-local GemsLabel = CreateLabel("TRAIT ITEMS 0  GEMS 0", Color3.fromRGB(255, 120, 200), 20, true)
+-- Draggable logic
+local drag, dStart, sPos
+btn.InputBegan:Connect(function(i) 
+    if i.UserInputType == Enum.UserInputType.MouseButton1 then drag, dStart, sPos = true, i.Position, btn.Position end 
+end)
+uis.InputChanged:Connect(function(i) 
+    if drag and i.UserInputType == Enum.UserInputType.MouseMovement then 
+        btn.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + (i.Position.X - dStart.X), sPos.Y.Scale, sPos.Y.Offset + (i.Position.Y - dStart.Y)) 
+    end 
+end)
+uis.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end)
 
-CreateLabel("", Color3.fromRGB(0,0,0), 6) -- Spacer
-
-local DiceLabel = CreateLabel("BEST DICE None • Luck 1", Color3.fromRGB(0, 220, 255), 18, true)
-local IncomeTitle = CreateLabel("HIGHEST INCOME UNIT", Color3.fromRGB(180, 130, 255), 16, true)
-local UnitDetailsLabel = CreateLabel("None • $0/s", Color3.fromRGB(0, 255, 120), 18, true)
-local RarityLabel = CreateLabel("Normal", Color3.fromRGB(200, 200, 200), 16, true)
-
-CreateLabel("", Color3.fromRGB(0,0,0), 6) -- Spacer
-
-local SessionLabel = CreateLabel("SESSION 00:00:00 • 60 FPS", Color3.fromRGB(255, 200, 50), 18, true)
-local TowerLabel = CreateLabel("TOWER None • Run 0 • Floor 0", Color3.fromRGB(200, 150, 255), 18, true)
-local InstructionsLabel = CreateLabel("X = hide screen • toggle behind screen = reopen", Color3.fromRGB(120, 120, 120), 12, false)
-
--- 2. Floating Toggle Button (Visible when normal screen is active)
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0, 150, 0, 40)
-ToggleButton.Position = UDim2.new(0.5, -75, 0, 20) -- Top center
-ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50) -- Starts Red (OFF)
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.TextSize = 16
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.Text = "KAITUN • OFF"
-ToggleButton.Parent = OverlayGui
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = ToggleButton
-
--- Make the toggle button draggable
-local dragging, dragInput, dragStart, startPos
-ToggleButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = ToggleButton.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
-    end
+-- Toggle
+btn.MouseButton1Click:Connect(function()
+    on = not on
+    btn.BackgroundColor3 = on and Color3.fromRGB(30,120,70) or Color3.fromRGB(180,50,50)
+    btn.Text = on and "KAITUN • ON" or "KAITUN • OFF"
+    bg.Visible, start = on and not hide, os.time()
+    rs:Set3dRenderingEnabled(not on)
 end)
 
-ToggleButton.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        ToggleButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
--- 3. Toggle Logic
-local function ToggleKaitun()
-    KaitunEnabled = not KaitunEnabled
+-- Advanced Game Data Scanner
+local function getGameStat(keywords, defaultVal)
+    local searchLocations = {
+        p:FindFirstChild("leaderstats"),
+        p:FindFirstChild("PlayerData"),
+        p:FindFirstChild("Data"),
+        p:FindFirstChild("PlayerGui")
+    }
     
-    if KaitunEnabled then
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 120, 70) -- Green when ON
-        ToggleButton.Text = "KAITUN • ON"
-        Background.Visible = true
-        RunService:Set3dRenderingEnabled(false)
-        StartTime = os.time() -- Reset session timer
-    else
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50) -- Red when OFF
-        ToggleButton.Text = "KAITUN • OFF"
-        Background.Visible = false
-        RunService:Set3dRenderingEnabled(true)
+    for _, location in ipairs(searchLocations) do
+        if location then
+            for _, descendant in ipairs(location:GetDescendants()) do
+                for _, key in ipairs(keywords) do
+                    if string.find(string.lower(descendant.Name), string.lower(key)) then
+                        if descendant:IsA("ValueBase") and descendant.Value ~= nil then
+                            return descendant.Value
+                        elseif descendant:IsA("TextLabel") and descendant.Text ~= "" then
+                            return descendant.Text
+                        end
+                    end
+                end
+            end
+        end
     end
+    return defaultVal
 end
 
--- Hook up the toggle button, checking dragging so it doesn't click when you move it
-ToggleButton.MouseButton1Click:Connect(function()
-    ToggleKaitun()
-end)
-
--- 4. Format Time Helper
-local function FormatTime(seconds)
-    local hrs = math.floor(seconds / 3600)
-    local mins = math.floor((seconds % 3600) / 60)
-    local secs = seconds % 60
-    return string.format("%02d:%02d:%02d", hrs, mins, secs)
-end
-
--- 5. Helper function to find stat values dynamically across different folders
-local function FindStat(name)
-    -- Look in leaderstats first
-    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
-    if leaderstats then
-        local stat = leaderstats:FindFirstChild(name)
-        if stat then return stat.Value end
-    end
-    
-    -- Fallback to PlayerData or other common nested folders
-    local playerData = LocalPlayer:FindFirstChild("PlayerData") or LocalPlayer:FindFirstChild("Data")
-    if playerData then
-        local stat = playerData:FindFirstChild(name, true) -- Recursive search
-        if stat and stat:IsA("ValueBase") then return stat.Value end
-    end
-    
-    return nil
-end
-
--- 6. Live UI Stats Updater Loop
+-- Live Update Loop
 task.spawn(function()
-    local lastTime = os.clock()
-    local frameCount = 0
-    local fps = 60
-
-    RunService.RenderStepped:Connect(function()
-        frameCount = frameCount + 1
-        local currentTime = os.clock()
-        if currentTime - lastTime >= 1 then
-            fps = frameCount
-            frameCount = 0
-            lastTime = currentTime
-        end
-    end)
-
     while task.wait(0.5) do
-        if KaitunEnabled and not ScreenHidden then
-            -- Update Session & FPS
-            local elapsed = os.time() - StartTime
-            SessionLabel.Text = string.format("SESSION %s • %d FPS", FormatTime(elapsed), fps)
+        if on and not hide then
+            local s = os.time() - start
+            l_ses.Text = string.format("SESSION %02d:%02d:%02d", math.floor(s/3600), math.floor((s%3600)/60), s%60)
             
-            -- Track Live Game Stats dynamically
-            local money = FindStat("Money") or FindStat("Coins") or FindStat("Yen") or 0
-            local slots = FindStat("Slots") or FindStat("Equipped") or 0
-            MoneyLabel.Text = string.format("MONEY $%s  SLOTS %s", tostring(money), tostring(slots))
+            local money = getGameStat({"money", "yen", "cash", "coins"}, "0")
+            local slots = getGameStat({"slots", "equippedslots", "maxslots"}, "0")
+            l_mon.Text = string.format("MONEY $%s  SLOTS %s", tostring(money), tostring(slots))
             
-            local gems = FindStat("Gems") or FindStat("Diamonds") or 0
-            local traitItems = FindStat("TraitItems") or FindStat("Trait Items") or FindStat("Trait Crystals") or 0
-            GemsLabel.Text = string.format("TRAIT ITEMS %s  GEMS %s", tostring(traitItems), tostring(gems))
+            local gems = getGameStat({"gems", "diamonds"}, "0")
+            local items = getGameStat({"traititems", "traits", "items"}, "0")
+            l_gem.Text = string.format("TRAIT ITEMS %s  GEMS %s", tostring(items), tostring(gems))
             
-            local luck = FindStat("Luck") or 1
-            local bestDice = FindStat("BestDice") or FindStat("Best Dice") or "Unknown"
-            DiceLabel.Text = string.format("BEST DICE %s • Luck %s", tostring(bestDice), tostring(luck))
+            local dice = getGameStat({"bestdice", "dice", "equippeddice"}, "None")
+            local luck = getGameStat({"luck", "multiplier"}, "1")
+            l_dic.Text = string.format("BEST DICE %s • Luck %s", tostring(dice), tostring(luck))
             
-            local floor = FindStat("Floor") or FindStat("CurrentFloor") or 0
-            local runCount = FindStat("Run") or FindStat("Runs") or 0
-            local towerName = FindStat("Tower") or FindStat("CurrentTower") or "None"
-            TowerLabel.Text = string.format("TOWER %s • Run %s • Floor %s", tostring(towerName), tostring(runCount), tostring(floor))
+            local unit = getGameStat({"bestunit", "highestincome", "unit"}, "None")
+            l_unit.Text = string.format("HIGHEST INCOME UNIT: %s", tostring(unit))
+            
+            local tower = getGameStat({"tower", "currenttower"}, "None")
+            local run = getGameStat({"run", "runs"}, "0")
+            local floor = getGameStat({"floor", "currentfloor"}, "0")
+            l_tow.Text = string.format("TOWER %s • Run %s • Floor %s", tostring(tower), tostring(run), tostring(floor))
         end
     end
 end)
 
--- 7. Keybind Listener (Press 'X' to hide/show the black screen while Kaitun stays ON)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.X and KaitunEnabled then
-        ScreenHidden = not ScreenHidden
-        Background.Visible = not ScreenHidden
+-- Keybind hide screen
+uis.InputBegan:Connect(function(i, gp)
+    if not gp and i.KeyCode == Enum.KeyCode.X and on then
+        hide = not hide
+        bg.Visible = not hide
     end
 end)
-
 -- Initialize at default state (Off)
 RunService:Set3dRenderingEnabled(true)
