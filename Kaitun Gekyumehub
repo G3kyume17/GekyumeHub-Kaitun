@@ -4,47 +4,108 @@ local uis = game:GetService("UserInputService")
 
 local on, hide, start = false, false, os.time()
 
--- UI Setup
+-- 1. Main Gui Container
 local gui = Instance.new("ScreenGui", game:GetService("CoreGui") or p.PlayerGui)
 gui.Name, gui.IgnoreGuiInset, gui.ResetOnSpawn = "GekyumeHubKaitun", true, false
 
+-- Black Background (Modern Dark Overlay)
 local bg = Instance.new("Frame", gui)
-bg.Size, bg.BackgroundColor3, bg.BorderSizePixel, bg.Visible = UDim2.new(1,0,1,0), Color3.new(0,0,0), 0, false
+bg.Size, bg.BackgroundColor3, bg.BorderSizePixel, bg.Visible = UDim2.new(1, 0, 1, 0), Color3.fromRGB(8, 8, 12), 0, false
 
-local txtBox = Instance.new("Frame", bg)
-txtBox.Size, txtBox.Position, txtBox.BackgroundTransparency = UDim2.new(0,400,0,350), UDim2.new(0.5,-200,0.5,-175), 1
-Instance.new("UIListLayout", txtBox).HorizontalAlignment = Enum.HorizontalAlignment.Center
+-- Card Container (Centered Glassmorphic Panel)
+local card = Instance.new("Frame", bg)
+card.Size, card.Position = UDim2.new(0, 420, 0, 360), UDim2.new(0.5, -210, 0.5, -180)
+card.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+card.BorderSizePixel = 0
 
-local function lbl(t, c, s, b)
-    local l = Instance.new("TextLabel", txtBox)
-    l.Size, l.BackgroundTransparency, l.Text, l.TextColor3 = UDim2.new(1,0,0,s or 20), 1, t, c or Color3.new(1,1,1)
-    l.TextSize, l.Font = (s or 20)-4, b and Enum.Font.SourceSansBold or Enum.Font.SourceSansSemibold
-    return l
+local cardCorner = Instance.new("UICorner", card)
+cardCorner.CornerRadius = UDim.new(0, 14)
+
+local cardStroke = Instance.new("UIStroke", card)
+cardStroke.Color = Color3.fromRGB(45, 45, 65)
+cardStroke.Thickness = 1.5
+
+-- Top Header
+local header = Instance.new("Frame", card)
+header.Size = UDim2.new(1, 0, 0, 70)
+header.BackgroundTransparency = 1
+
+local title = Instance.new("TextLabel", header)
+title.Size, title.Position = UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 0, 12)
+title.Text, title.Font, title.TextSize = "GEKYUME HUB", Enum.Font.GothamBold, 22
+title.TextColor3, title.BackgroundTransparency = Color3.fromRGB(180, 120, 255), 1
+
+local subTitle = Instance.new("TextLabel", header)
+subTitle.Size, subTitle.Position = UDim2.new(1, 0, 0, 20), UDim2.new(0, 0, 0, 40)
+subTitle.Text = "ANIME DICE • KAITUN SYSTEM"
+subTitle.Font, subTitle.TextSize = Enum.Font.GothamMedium, 11
+subTitle.TextColor3, subTitle.BackgroundTransparency = Color3.fromRGB(120, 120, 150), 1
+
+-- Divider Line
+local div = Instance.new("Frame", card)
+div.Size, div.Position = UDim2.new(0.9, 0, 0, 1), UDim2.new(0.05, 0, 0, 70)
+div.BackgroundColor3, div.BorderSizePixel = Color3.fromRGB(35, 35, 50), 0
+
+-- Stats Container
+local statsList = Instance.new("Frame", card)
+statsList.Size, statsList.Position = UDim2.new(0.9, 0, 0, 220), UDim2.new(0.05, 0, 0, 80)
+statsList.BackgroundTransparency = 1
+
+local layout = Instance.new("UIListLayout", statsList)
+layout.SortOrder, layout.Padding = Enum.SortOrder.LayoutOrder, UDim.new(0, 8)
+
+-- Helper function for minimal stat cards
+local function createStatRow(labelName, defaultVal, valColor)
+    local row = Instance.new("Frame", statsList)
+    row.Size = UDim2.new(1, 0, 0, 32)
+    row.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+    row.BorderSizePixel = 0
+    
+    local rCorner = Instance.new("UICorner", row)
+    rCorner.CornerRadius = UDim.new(0, 8)
+    
+    local tag = Instance.new("TextLabel", row)
+    tag.Size, tag.Position = UDim2.new(0.4, 0, 1, 0), UDim2.new(0, 12, 0, 0)
+    tag.Text, tag.Font, tag.TextSize = string.upper(labelName), Enum.Font.GothamBold, 11
+    tag.TextColor3, tag.TextXAlignment, tag.BackgroundTransparency = Color3.fromRGB(140, 140, 170), Enum.TextXAlignment.Left, 1
+    
+    local val = Instance.new("TextLabel", row)
+    val.Size, val.Position = UDim2.new(0.55, 0, 1, 0), UDim2.new(0.42, 0, 0, 0)
+    val.Text, val.Font, val.TextSize = defaultVal, Enum.Font.GothamBold, 12
+    val.TextColor3, val.TextXAlignment, val.BackgroundTransparency = valColor or Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Right, 1
+    
+    return val
 end
 
--- Draw HUD
-lbl("ANIME DICE KAITUN", Color3.fromRGB(200,150,255), 26, true)
-lbl("GekyumeHub", Color3.new(1,1,1), 18, true)
-lbl("@"..p.Name, Color3.fromRGB(180,180,180), 14, false)
-lbl("● KAITUN RUNNING", Color3.fromRGB(0,255,120), 18, true)
-lbl("", Color3.new(), 6)
-local l_mon = lbl("MONEY $0  SLOTS 0", Color3.fromRGB(0,255,120), 20, true)
-local l_gem = lbl("TRAIT ITEMS 0  GEMS 0", Color3.fromRGB(255,120,200), 20, true)
-lbl("", Color3.new(), 6)
-local l_dic = lbl("BEST DICE None • Luck 1", Color3.fromRGB(0,220,255), 18, true)
-local l_unit = lbl("HIGHEST INCOME UNIT: None", Color3.fromRGB(180,130,255), 18, true)
-local l_tow = lbl("TOWER None • Run 0 • Floor 0", Color3.fromRGB(200,150,255), 18, true)
-lbl("", Color3.new(), 6)
-local l_ses = lbl("SESSION 00:00:00", Color3.fromRGB(255,200,50), 18, true)
+-- Create Modern Rows
+local v_mon = createStatRow("Money / Slots", "$0 • 0 Slots", Color3.fromRGB(0, 230, 130))
+local v_gem = createStatRow("Gems / Traits", "0 Gems • 0 Traits", Color3.fromRGB(255, 110, 180))
+local v_dic = createStatRow("Best Dice", "None (Luck x1)", Color3.fromRGB(0, 200, 255))
+local v_unit = createStatRow("Top Unit", "None", Color3.fromRGB(180, 140, 255))
+local v_tow = createStatRow("Tower Progress", "Floor 0", Color3.fromRGB(255, 190, 60))
 
--- Floating Toggle Button
+-- Footer Status
+local footer = Instance.new("TextLabel", card)
+footer.Size, footer.Position = UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 1, -34)
+footer.Text = "SESSION: 00:00:00  •  [X] Hide Screen"
+footer.Font, footer.TextSize = Enum.Font.GothamMedium, 11
+footer.TextColor3, footer.BackgroundTransparency = Color3.fromRGB(100, 100, 130), 1
+
+-- 2. Floating Toggle Button (Minimalistic Pill Button)
 local btn = Instance.new("TextButton", gui)
-btn.Size, btn.Position = UDim2.new(0,150,0,40), UDim2.new(0.5,-75,0,20)
-btn.BackgroundColor3, btn.Text, btn.TextColor3 = Color3.fromRGB(180,50,50), "KAITUN • OFF", Color3.new(1,1,1)
-btn.Font, btn.TextSize = Enum.Font.GothamBold, 16
-Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
+btn.Size, btn.Position = UDim2.new(0, 140, 0, 36), UDim2.new(0.5, -70, 0, 20)
+btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+btn.Text = "KAITUN  •  OFF"
+btn.TextColor3, btn.Font, btn.TextSize = Color3.fromRGB(230, 80, 80), Enum.Font.GothamBold, 12
 
--- Draggable logic
+local btnCorner = Instance.new("UICorner", btn)
+btnCorner.CornerRadius = UDim.new(0, 20)
+
+local btnStroke = Instance.new("UIStroke", btn)
+btnStroke.Color = Color3.fromRGB(50, 50, 70)
+btnStroke.Thickness = 1.5
+
+-- Draggable Toggle Button
 local drag, dStart, sPos
 btn.InputBegan:Connect(function(i) 
     if i.UserInputType == Enum.UserInputType.MouseButton1 then drag, dStart, sPos = true, i.Position, btn.Position end 
@@ -56,78 +117,48 @@ uis.InputChanged:Connect(function(i)
 end)
 uis.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end)
 
--- Toggle
+-- Toggle Logic
 btn.MouseButton1Click:Connect(function()
     on = not on
-    btn.BackgroundColor3 = on and Color3.fromRGB(30,120,70) or Color3.fromRGB(180,50,50)
-    btn.Text = on and "KAITUN • ON" or "KAITUN • OFF"
+    btn.Text = on and "KAITUN  •  ON" or "KAITUN  •  OFF"
+    btn.TextColor3 = on and Color3.fromRGB(0, 230, 130) or Color3.fromRGB(230, 80, 80)
+    btnStroke.Color = on and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(50, 50, 70)
     bg.Visible, start = on and not hide, os.time()
     rs:Set3dRenderingEnabled(not on)
 end)
 
--- Advanced Game Data Scanner
-local function getGameStat(keywords, defaultVal)
-    local searchLocations = {
-        p:FindFirstChild("leaderstats"),
-        p:FindFirstChild("PlayerData"),
-        p:FindFirstChild("Data"),
-        p:FindFirstChild("PlayerGui")
-    }
+-- Dynamic Stat Reader
+local function getVal(key, defaultVal)
+    local rep = game:GetService("ReplicatedStorage")
+    local attr = p:GetAttribute(key)
+    if attr ~= nil then return attr end
     
-    for _, location in ipairs(searchLocations) do
-        if location then
-            for _, descendant in ipairs(location:GetDescendants()) do
-                for _, key in ipairs(keywords) do
-                    if string.find(string.lower(descendant.Name), string.lower(key)) then
-                        if descendant:IsA("ValueBase") and descendant.Value ~= nil then
-                            return descendant.Value
-                        elseif descendant:IsA("TextLabel") and descendant.Text ~= "" then
-                            return descendant.Text
-                        end
-                    end
-                end
-            end
-        end
-    end
+    local leader = p:FindFirstChild("leaderstats")
+    if leader and leader:FindFirstChild(key) then return leader[key].Value end
+    
     return defaultVal
 end
 
--- Live Update Loop
+-- Live Loop
 task.spawn(function()
     while task.wait(0.5) do
         if on and not hide then
             local s = os.time() - start
-            l_ses.Text = string.format("SESSION %02d:%02d:%02d", math.floor(s/3600), math.floor((s%3600)/60), s%60)
+            footer.Text = string.format("SESSION: %02d:%02d:%02d  •  [X] Hide Overlay", math.floor(s/3600), math.floor((s%3600)/60), s%60)
             
-            local money = getGameStat({"money", "yen", "cash", "coins"}, "0")
-            local slots = getGameStat({"slots", "equippedslots", "maxslots"}, "0")
-            l_mon.Text = string.format("MONEY $%s  SLOTS %s", tostring(money), tostring(slots))
-            
-            local gems = getGameStat({"gems", "diamonds"}, "0")
-            local items = getGameStat({"traititems", "traits", "items"}, "0")
-            l_gem.Text = string.format("TRAIT ITEMS %s  GEMS %s", tostring(items), tostring(gems))
-            
-            local dice = getGameStat({"bestdice", "dice", "equippeddice"}, "None")
-            local luck = getGameStat({"luck", "multiplier"}, "1")
-            l_dic.Text = string.format("BEST DICE %s • Luck %s", tostring(dice), tostring(luck))
-            
-            local unit = getGameStat({"bestunit", "highestincome", "unit"}, "None")
-            l_unit.Text = string.format("HIGHEST INCOME UNIT: %s", tostring(unit))
-            
-            local tower = getGameStat({"tower", "currenttower"}, "None")
-            local run = getGameStat({"run", "runs"}, "0")
-            local floor = getGameStat({"floor", "currentfloor"}, "0")
-            l_tow.Text = string.format("TOWER %s • Run %s • Floor %s", tostring(tower), tostring(run), tostring(floor))
+            v_mon.Text = string.format("$%s • %s Slots", tostring(getVal("Money", "0")), tostring(getVal("Slots", "0")))
+            v_gem.Text = string.format("%s Gems • %s Traits", tostring(getVal("Gems", "0")), tostring(getVal("TraitItems", "0")))
+            v_dic.Text = string.format("%s (Luck x%s)", tostring(getVal("BestDice", "None")), tostring(getVal("Luck", "1")))
+            v_unit.Text = tostring(getVal("BestUnit", "None"))
+            v_tow.Text = string.format("%s • Floor %s", tostring(getVal("Tower", "Main")), tostring(getVal("Floor", "0")))
         end
     end
 end)
 
--- Keybind hide screen
+-- Keybind hide screen (X)
 uis.InputBegan:Connect(function(i, gp)
     if not gp and i.KeyCode == Enum.KeyCode.X and on then
         hide = not hide
         bg.Visible = not hide
     end
 end)
--- Initialize at default state (Off)
-RunService:Set3dRenderingEnabled(true)
